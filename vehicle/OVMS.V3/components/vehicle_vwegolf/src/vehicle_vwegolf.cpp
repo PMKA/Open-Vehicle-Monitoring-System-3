@@ -792,6 +792,14 @@ OvmsVehicle::vehicle_command_t OvmsVehicleVWeGolf::SendClimaBapBurst(bool enable
     // 0x05→0x00 status transition on BAP port 0x12 a few hundred ms later; dropping
     // out immediately would miss the ACK. Natural bus-idle timeout in Ticker1 clears
     // m_ocu_active once KCAN goes quiet.
+    //
+    // Re-arm the session counters on every burst, not just on WakeKcanBus. On a warm
+    // bus retry (m_ocu_active was false but counters still hold their previous session's
+    // final values), a stale m_ocu_grace_secs >= VWEGOLF_OCU_ACK_GRACE_SECS would trip
+    // grace_expired on the very first Ticker1 tick, clearing OCU before the ECU ever
+    // receives sustained heartbeats. Mirrors what WakeKcanBus already does.
+    m_ocu_grace_secs = 255;    // arm fresh ACK wait sentinel
+    m_ocu_session_secs = 0;    // restart session cap
     m_ocu_active = true;
     return Success;
 }
