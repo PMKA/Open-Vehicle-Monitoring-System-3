@@ -7,7 +7,8 @@
 ;
 ;    (C) 2011       Michael Stegen / Stegen Electronics
 ;    (C) 2011-2017  Mark Webb-Johnson
-;    (C) 2011       Sonny Chen @ EPRO/DX
+;    (C) 2011        Sonny Chen @ EPRO/DX
+;    (C) 2018       Michael Balzer
 ;
 ; Permission is hereby granted, free of charge, to any person obtaining a copy
 ; of this software and associated documentation files (the "Software"), to deal
@@ -27,59 +28,38 @@
 ; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 ; THE SOFTWARE.
 */
+#ifndef __file_writer_h__
+#define __file_writer_h__
 
-#ifndef __DBC_APP_H__
-#define __DBC_APP_H__
-
-#include "dbc.h"
 #include "ovms_command.h"
-#include "ovms_mutex.h"
-#include "ovms_utils.h"
-#ifdef CONFIG_OVMS_SC_JAVASCRIPT_DUKTAPE
-#include "duk_config.h"
-#include "duktape.h"
-#endif
 
-typedef std::map<std::string, dbcfile*> dbcLoadedFiles_t;
+class LogBuffers;
+class OvmsCommandMap;
 
-class dbc
+class FileWriter : public OvmsWriter
   {
   public:
-    dbc();
-    ~dbc();
+    FileWriter(std::string path);
+    ~FileWriter();
 
   public:
-    bool LoadFile(const char* name, const char* path);
-    dbcfile* LoadString(const char* name, const char* content);
-    bool Unload(const char* name);
-    void LoadDirectory(const char* path, bool log=false);
-    void LoadAutoExtras(bool log=false);
-    dbcfile* Find(const char* name);
-
-  protected:
-#ifdef CONFIG_OVMS_SC_JAVASCRIPT_DUKTAPE
-    static duk_ret_t DukOvmsDBCLoad(duk_context *ctx);
-    static duk_ret_t DukOvmsDBCUnload(duk_context *ctx);
-    static duk_ret_t DukOvmsDBCGet(duk_context *ctx);
-#endif
-  public:
-    bool SelectFile(dbcfile* select);
-    bool SelectFile(const char* name);
-    void DeselectFile();
-    dbcfile* SelectedFile();
-
-    bool ExpandComplete(OvmsWriter* writer, const char *token, bool complete);
+    int puts(const char* s);
+    int printf(const char* fmt, ...) __attribute__ ((format (printf, 2, 3)));
+    ssize_t write(const void *buf, size_t nbyte);
 
   public:
-    void AutoInit();
+    void Log(LogBuffers* message) {}
+    virtual bool IsInteractive() { return false; }
 
   public:
-    OvmsMutex m_mutex;
-    dbcLoadedFiles_t m_dbclist;
-    dbcfile* m_selected;
-    bool m_autoload = false;
+    virtual void NotifyVfsMigration(const std::string& src, const std::string& dst);
+
+  private:
+    std::string m_path;
+
+  private:
+    FILE* OpenAppendFile();
+    void CloseAppendFile(FILE* file);
   };
 
-extern dbc MyDBC;
-
-#endif //#ifndef __DBC_APP_H__
+#endif // __file_writer_h__

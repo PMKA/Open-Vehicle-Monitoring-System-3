@@ -54,32 +54,6 @@ OvmsVehicleSmartEQ* OvmsVehicleSmartEQ::GetInstance(OvmsWriter* writer)
 OvmsVehicleSmartEQ::OvmsVehicleSmartEQ() {
   ESP_LOGI(TAG, "Start smart EQ vehicle module");
 
-  m_12v_ticker = 0;
-  m_ddt4all = false;
-  m_ddt4all_ticker = 0;
-  m_ddt4all_exec = 0;
-  m_warning_unlocked = false;
-  m_warning_dooropen = false;
-  m_modem_restart = false;
-  m_modem_ticker = 0;
-  m_ADCfactor_recalc = false;
-  m_ADCfactor_recalc_timer = 0;
-  m_adc_samples = 5;
-  m_gear = 0;
-
-  m_enable_write = false;
-  m_enable_write_caron = false;
-  m_can_active = false;
-  m_candata_poll = false;
-  m_candata_timer = -1;
-
-  m_charge_finished = true;
-  m_notifySOClimit = false;
-  m_led_state = 4;
-  m_cfg_cell_interval_drv = 60;
-  m_cfg_cell_interval_chg = 60;
-  m_poll_on_charge = false;
-
   // BMS configuration:
   BmsSetCellArrangementVoltage(96, 1);               // 96 cells, 1 series string
   BmsSetCellArrangementTemperature(27, 1);           // 27 temp sensors, 1 series string
@@ -187,6 +161,10 @@ OvmsVehicleSmartEQ::OvmsVehicleSmartEQ() {
   // Start CAN bus in Listen-only mode - will be set according to m_enable_write in ConfigChanged()
   RegisterCanBus(1, CAN_MODE_LISTEN, CAN_SPEED_500KBPS);
 
+  // register config container for smart EQ module, with callback to ConfigChanged() on changes
+  MyConfig.RegisterParam("xsq", "smartEQ", true, true); 
+  ConfigChanged(NULL);
+
   // init commands:
   cmd_xsq = MyCommandApp.RegisterCommand("xsq","smartEQ 453 Gen.4");
   cmd_xsq->RegisterCommand("mtdata", "Maintenance data", xsq_maintenance);
@@ -209,14 +187,11 @@ OvmsVehicleSmartEQ::OvmsVehicleSmartEQ() {
   cmd_show->RegisterCommand("counter", "Show vehicle trip counter", xsq_trip_counters);
   cmd_show->RegisterCommand("total", "Show vehicle trip total", xsq_trip_total);
 
-  MyConfig.RegisterParam("xsq", "smartEQ", true, true);
-
-  ConfigChanged(NULL);
   StdMetrics.ms_v_gen_current->SetValue(2);                    // activate gen metrics to app transfer
   StdMetrics.ms_v_bat_12v_voltage_alert->SetValue(false);      // set 12V alert to false
   StdMetrics.ms_v_env_charging12v->SetValue(false);            // set 12V charging state to false
   StdMetrics.ms_v_env_aux12v->SetValue(false);
-  StdMetrics.ms_v_env_hvac->SetValue(false);
+  StdMetrics.ms_v_env_hvac->SetValue(false);  
 
   if (mt_pos_odometer_trip_total->AsFloat(0) < 1.0f)           // reset at boot
     {
@@ -224,11 +199,8 @@ OvmsVehicleSmartEQ::OvmsVehicleSmartEQ() {
     ResetTripCounters();
     }
 
-  if (m_enable_write)
-    PollSetState(POLLSTATE_AWAKE);                                  // start polling to get the first data
-
-  if (m_cfg_preset_version != PRESET_VERSION)                    // preset version changed
-    CommandPreset(0, NULL);                                      // set smart EQ config preset
+  if (m_cfg_preset_version != PRESET_VERSION)                  // preset version changed
+    CommandPreset(0, NULL);                                    // set smart EQ config preset  
 
   #ifdef CONFIG_OVMS_COMP_WEBSERVER
     WebInit();
@@ -277,10 +249,10 @@ void OvmsVehicleSmartEQ::ConfigChanged(OvmsConfigParam* param) {
   bool obdii_79b          = true;
   bool obdii_7e4_dcdc     = true;
   
-  if (map) 
+  if (map)
     {
     m_enable_write         = map->GetValueBool("canwrite", false);
-    m_enable_write_caron   = map->GetValueBool("canwrite.caron", false);
+    m_enable_write_caron   = map->GetValueBool("canwrite.caron", true);
     m_enable_LED_state     = map->GetValueBool("led", false);
     m_bcvalue              = map->GetValueBool("bcvalue", false);
     m_enable_lock_state    = map->GetValueBool("unlock.warning", true);
