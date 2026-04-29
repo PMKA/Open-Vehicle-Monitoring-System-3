@@ -19,7 +19,10 @@ id	bus	status	notes
 17e	can2	pending	WOT accel — confirm MotorTorqueB on fwd load, check sign byte
 18	can3	done	clima verify deferred path: locked >=30s, start (wake + ~1s gap -> BAP), 10s, stop (NM linger + ACK ctr match) — 20260422 (4 caps)
 19	can3	done	clima verify direct path: unlock+door (bus awake), start (immediate BAP, no wake), 10s, stop — 20260422 (in same set as cap 18)
+20	can2	done	OBC 0x569 confirmed: d[4]=AC V 1V/bit (248V/0xf8); d[5]=AC A 1A/bit (9A); d[1]b6=charging-active; 2232W sustained; full AC session (Type 1 J1772 cable) — 20260429
+21	can2	done	OBC 0x569 steady-state: 248V/9A throughout; companion to cap 20 (mid-session only) — 20260429
+22	can2	done	OBC 0x569 stop: 9A->8A->0A ramp-down; d[1]b6 clears on charge stop; 248V remains (cable still plugged) — 20260429
 
 # FCAN decode baseline: can2-3.3.005-800-gc60d79ed-dirty_ota_1_edge-20260412-175611.crtd (CCS idle, 26127 frames)
 # Per-cap MD format: 5–10s pre/post idle, log stimulus + timestamps
-# Audit scripts: tests/analysis/scratch/apr7_*.py
+# Audit scripts: tests/analysis/scratch/apr7_*.py; obc_569_analysis.py (caps 20-22)
